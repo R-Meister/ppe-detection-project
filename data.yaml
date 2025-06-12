@@ -1,0 +1,12 @@
+path: datasets  # base dataset directory
+
+train: train/images
+val: valid/images
+test: test/images
+
+nc: 3  # number of classes
+
+names:
+  0: head
+  1: helmet
+  2: person
