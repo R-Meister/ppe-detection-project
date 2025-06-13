@@ -3,7 +3,7 @@ import cv2
 import sys
 import os
 
-def detect_helmet(image_path):
+def detect_head_helmet(image_path):
     # Suppress YOLO's verbose output
     os.environ['YOLO_VERBOSE'] = 'False'
     
@@ -14,26 +14,36 @@ def detect_helmet(image_path):
     image = cv2.imread(image_path)
     if image is None:
         print(f"Error: Could not load image from {image_path}")
-        return False
+        return False, False, None
     
-    # Run detection with verbose=False to suppress output
-    results = model(image, conf=0.25, verbose=False)
+    # Run detection with verbose=False
+    results = model(image, verbose=False)
     
-    # Check for helmet detection
+    # Check for head and helmet detection
+    head_detected = False
     helmet_detected = False
+    
     for result in results:
         boxes = result.boxes
         for box in boxes:
-            # Class 1 is helmet in our PPE detection model
-            if box.cls == 1:  # Changed from 0 to 1 for helmet class
+            cls = int(box.cls[0])
+            conf = float(box.conf[0])
+            x1, y1, x2, y2 = map(int, box.xyxy[0])
+            
+            if cls == 0:  # Head
+                head_detected = True
+                # Draw red box for head
+                cv2.rectangle(image, (x1, y1), (x2, y2), (0, 0, 255), 2)
+            elif cls == 1:  # Helmet
                 helmet_detected = True
-                break
+                # Draw green box for helmet
+                cv2.rectangle(image, (x1, y1), (x2, y2), (0, 255, 0), 2)
     
     # Save annotated result
     output_path = "output.jpg"
-    results[0].save(filename=output_path)
+    cv2.imwrite(output_path, image)
     
-    return helmet_detected, output_path
+    return head_detected, helmet_detected, output_path
 
 if __name__ == "__main__":
     if len(sys.argv) != 2:
@@ -41,11 +51,13 @@ if __name__ == "__main__":
         sys.exit(1)
     
     image_path = sys.argv[1]
-    helmet_detected, output_path = detect_helmet(image_path)
+    head_detected, helmet_detected, output_path = detect_head_helmet(image_path)
     
-    # Only print the final result
+    # Print detection results
     if helmet_detected:
-        print("✅ Helmet detected!")
+        print("✅ Helmet Detected")
+    elif head_detected:
+        print("⚠️ Head Visible (No Helmet)")
     else:
-        print("❌ No helmet detected")
+        print("❌ No Head/Helmet Detected")
     print(f"Annotated image saved as: {output_path}") 
